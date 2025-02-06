@@ -132,19 +132,75 @@ async def process_mixed(file: UploadFile = File(...), width: int = None, height:
     # 5️⃣ Sonucu döndür
     return StreamingResponse(final_image, media_type="image/png")
 
-@app.post("/advanced-perspective-shadow/")
-async def advanced_perspective_shadow(
-    file: UploadFile = File(...), 
-    shadow_angle: int = 45, 
-    shadow_opacity: int = 100, 
-    blur_radius: int = 25, 
-    shadow_scale: float = 1.5
+@app.post("/basic-shadow/")
+async def basic_shadow(
+    file: UploadFile = File(...),
+    shadow_opacity: int = 120,
+    blur_radius: int = 10,
+    offset_x: int = 20,
+    offset_y: int = 20,
 ):
     """
-    Gelişmiş açısal perspektif gölgesi ekler.
+    Temel bir gölge efekti uygular.
     """
     image_data = await file.read()
-    shadowed_image = service.apply_advanced_perspective_shadow(
-        image_data, shadow_angle, shadow_opacity, blur_radius, shadow_scale
+    shadowed_image = service.apply_basic_shadow(
+        image_data, shadow_opacity, blur_radius, (offset_x, offset_y)
     )
     return StreamingResponse(shadowed_image, media_type="image/png")
+
+@app.post("/realistic-shadow/")
+async def realistic_shadow(
+    file: UploadFile = File(...),
+    light_angle: int = 45,
+    shadow_opacity: int = 120,
+    blur_radius: int = 15,
+    shadow_length: float = 1.5,
+):
+    """
+    Işığın geldiği açıya göre gerçekçi bir gölge ekler ve koordinatları resimle hizalar.
+    """
+    image_data = await file.read()
+    shadowed_image = service.apply_realistic_shadow(
+        image_data, light_angle, shadow_opacity, blur_radius, shadow_length
+    )
+    return StreamingResponse(shadowed_image, media_type="image/png")
+
+@app.post("/standardize-aspect-ratio/")
+async def standardize_aspect_ratio(file: UploadFile = File(...), target_width: int = 500, target_height: int = 500):
+    image_data = await file.read()
+    result = service.standardize_aspect_ratio(image_data, target_width, target_height)
+    return StreamingResponse(result, media_type="image/png")
+
+
+@app.post("/remove-bg-and-add-shadow/")
+async def remove_bg_and_add_shadow(file: UploadFile = File(...)):
+    image_data = await file.read()
+    result = service.remove_background_and_add_shadow(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+
+@app.post("/generate-social-profile/")
+async def generate_social_profile(file: UploadFile = File(...)):
+    image_data = await file.read()
+    result = service.generate_social_media_profile(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+
+@app.post("/enhance-for-listing/")
+async def enhance_for_listing(file: UploadFile = File(...)):
+    image_data = await file.read()
+    result = service.enhance_for_listing(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/remove-text/")
+async def remove_text(file: UploadFile = File(...)):
+    """
+    Resimde bulunan tüm yazıları siler.
+    
+    :param file: Yüklenen resim dosyası.
+    :return: Yazıları silinmiş resmin PNG formatında çıktısı.
+    """
+    image_data = await file.read()
+    result = service.remove_text(image_data)
+    return StreamingResponse(result, media_type="image/png")
