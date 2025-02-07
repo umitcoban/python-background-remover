@@ -1,170 +1,138 @@
 # Image Processing API Documentation
 
-This API provides a wide range of image processing services, including background removal, filtering, resizing, text addition, sharpening, cropping, and shadow effects. It is designed for developers and businesses who need to process images dynamically through an API interface.
+This API is a FastAPI application that provides various endpoints for image processing operations.
 
-## Usage
-API requests should be made using **multipart form-data** with file uploads. The response will be a processed image in PNG format.
+## Endpoints
 
-### POST /remove-bg/
-Removes the background from an uploaded image, making it transparent.
+### Background Operations
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `width` (int, optional) - The desired output width.
-- `height` (int, optional) - The desired output height.
+#### `POST /remove-bg/`
+Removes the background from the uploaded image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `width`: Output width (optional)
+  - `height`: Output height (optional)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/remove-bg/" -F "file=@image.png"
-```
+#### `POST /remove-bg-and-add-shadow/`
+Removes the background and adds shadow to the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-### POST /add-shadow/
-Adds a virtual shadow effect to the uploaded image for a more realistic appearance.
+### Shadow Effects
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
+#### `POST /add-shadow/`
+Adds shadow effect to the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/add-shadow/" -F "file=@image.png"
-```
+#### `POST /basic-shadow/`
+Adds basic shadow effect.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `shadow_opacity`: Shadow opacity (default: 120)
+  - `blur_radius`: Blur radius (default: 10)
+  - `offset_x`: X-axis offset value (default: 20)
+  - `offset_y`: Y-axis offset value (default: 20)
 
-### POST /apply-filter/
-Applies different filters such as **grayscale**, **sepia**, or **negative** to an image.
+#### `POST /realistic-shadow/`
+Adds realistic shadow based on light angle.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `light_angle`: Light angle (default: 45)
+  - `shadow_opacity`: Shadow opacity (default: 120)
+  - `blur_radius`: Blur radius (default: 15)
+  - `shadow_length`: Shadow length (default: 1.0)
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `filter_type` (str) - The filter type to apply (**grayscale**, **sepia**, **negative**).
+### Filtering and Effects
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/apply-filter/" -F "file=@image.png" -F "filter_type=grayscale"
-```
+#### `POST /apply-filter/`
+Applies various filters to the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `filter_type`: Filter type (default: "grayscale")
+    - Supported filters: sepia, grayscale, negative
 
-### POST /resize-image/
-Resizes an image to specified dimensions while maintaining aspect ratio.
+#### `POST /sketch-effect/`
+Converts the image to a sketch effect.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `width` (int) - The target width.
-- `height` (int) - The target height.
+#### `POST /pixelate/`
+Applies mosaic (pixelate) effect to the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `pixel_size`: Pixel size (default: 10)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/resize-image/" -F "file=@image.png" -F "width=500" -F "height=500"
-```
+### Resizing and Rotation
 
-### POST /add-text/
-Adds custom text to an image with specified positioning and font size.
+#### `POST /resize-image/`
+Resizes the image to specified dimensions.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `width`: Target width (required)
+  - `height`: Target height (required)
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `text` (str) - The text to be added.
-- `x` (int) - X coordinate position.
-- `y` (int) - Y coordinate position.
-- `font_size` (int) - Font size.
+#### `POST /rotate-image/`
+Rotates the image by specified angle.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `angle`: Rotation angle (required)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/add-text/" -F "file=@image.png" -F "text=Hello" -F "x=50" -F "y=50" -F "font_size=30"
-```
+#### `POST /standardize-aspect-ratio/`
+Standardizes the aspect ratio of the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `target_width`: Target width (default: 500)
+  - `target_height`: Target height (default: 500)
 
-### POST /sharpen/
-Enhances the sharpness of an image to improve its clarity.
+### Cropping and Editing
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
+#### `POST /crop/`
+Crops the image from specified coordinates.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `left`: Left edge coordinate (default: 0)
+  - `top`: Top edge coordinate (default: 0)
+  - `right`: Right edge coordinate (default: 100)
+  - `bottom`: Bottom edge coordinate (default: 100)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/sharpen/" -F "file=@image.png"
-```
+#### `POST /sharpen/`
+Sharpens the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-### POST /remove-text/
-Automatically detects and removes text from an image using advanced image processing.
+### Text Operations
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
+#### `POST /add-text/`
+Adds text to the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
+  - `text`: Text to add (default: "Test")
+  - `x`: X coordinate (default: 10)
+  - `y`: Y coordinate (default: 10)
+  - `font_size`: Font size (default: 30)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/remove-text/" -F "file=@image.png"
-```
+#### `POST /remove-text/`
+Detects and removes text areas from the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-### POST /crop/
-Crops an image based on the specified coordinates.
+### Special Operations
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `left` (int) - Left coordinate.
-- `top` (int) - Top coordinate.
-- `right` (int) - Right coordinate.
-- `bottom` (int) - Bottom coordinate.
+#### `POST /edge-detection/`
+Performs edge detection on the image.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/crop/" -F "file=@image.png" -F "left=10" -F "top=20" -F "right=100" -F "bottom=200"
-```
+#### `POST /generate-social-profile/`
+Creates a round social media profile picture.
+- **Parameters:**
+  - `file`: Image file to upload (required)
 
-### POST /pixelate/
-Applies a pixelation effect to an image for privacy or artistic purposes.
+## General Notes
 
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `pixel_size` (int, optional) - The size of pixels (default: 10).
-
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/pixelate/" -F "file=@image.png" -F "pixel_size=20"
-```
-
-### POST /rotate-image/
-Rotates an image by a given angle while preserving its quality.
-
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-- `angle` (int) - Rotation angle in degrees.
-
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/rotate-image/" -F "file=@image.png" -F "angle=90"
-```
-
-### POST /enhance-for-listing/
-Optimizes an image for product listings by enhancing contrast and removing noise.
-
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/enhance-for-listing/" -F "file=@image.png"
-```
-
-### POST /generate-social-profile/
-Creates a round profile picture for social media platforms by cropping and centering the image.
-
-**Parameters:**
-- `file` (UploadFile) - The image to be processed.
-
-**Example Usage:**
-```sh
-curl -X POST "http://127.0.0.1:8000/generate-social-profile/" -F "file=@image.png"
-```
-
-This API enables seamless and efficient image processing operations for a wide range of applications, from social media profile picture adjustments to e-commerce product image enhancements.
-
-# 🏪 Enhance for Listing API
-
-This API optimizes an image for product listings by enhancing contrast, removing noise, and improving clarity for better visibility on e-commerce platforms.
-
-## 📌 Endpoint
-### `POST /enhance-for-listing/`
-Optimizes an image for product listings.
-
-## 🔹 Parameters:
-- `file` (UploadFile) - The image to be processed.
-
-## 📤 Example Usage:
-```sh
-curl -X POST "http://127.0.0.1:8000/enhance-for-listing/" -F "file=@product_image.png"
+- All endpoints use POST method
+- Image files should be sent in multipart/form-data format
+- All operations return images in PNG format
+- Operations are performed asynchronously
+- In case of errors, appropriate HTTP status codes are returned with error messages
