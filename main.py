@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import StreamingResponse
 from service import ImageProcessService
 
-app = FastAPI()
+app = FastAPI(root_path="/")
 
 # Servis sınıfını başlat
 service = ImageProcessService()
