@@ -183,7 +183,7 @@ async def generate_social_profile(file: UploadFile = File(...)):
     result = service.generate_social_media_profile(image_data)
     return StreamingResponse(result, media_type="image/png")
 
-@app.post("/generate-socia-media-profile/")
+@app.post("/generate-social-media-profile/")
 async def generate_social_media_profile(file: UploadFile = File(...)):
     """
     Yuvarlak sosyal medya profil fotoğrafı oluşturur.
