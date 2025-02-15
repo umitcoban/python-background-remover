@@ -183,6 +183,15 @@ async def generate_social_profile(file: UploadFile = File(...)):
     result = service.generate_social_media_profile(image_data)
     return StreamingResponse(result, media_type="image/png")
 
+@app.post("/generate-socia-media-profile/")
+async def generate_social_media_profile(file: UploadFile = File(...)):
+    """
+    Yuvarlak sosyal medya profil fotoğrafı oluşturur.
+    """
+    image_data = await file.read()
+    result = service.generate_social_media_profile(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
 @app.post("/remove-text/")
 async def remove_text(file: UploadFile = File(...)):
     """
@@ -190,4 +199,46 @@ async def remove_text(file: UploadFile = File(...)):
     """
     image_data = await file.read()
     result = service.remove_text(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/cartoon-effect/")
+async def cartoon_effect(file: UploadFile = File(...)):
+    """
+    Resmi çizgi film tarzına dönüştürür.
+    """
+    image_data = await file.read()
+    result = service.apply_cartoon_effect(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/glitch-effect/")
+async def glitch_effect(
+    file: UploadFile = File(...),
+    intensity: float = Query(0.1, ge=0, le=1)
+):
+    """
+    Resme glitch (bozulma) efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_glitch_effect(image_data, intensity)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/neon-effect/")
+async def neon_effect(
+    file: UploadFile = File(...),
+    glow_amount: float = Query(2.5, ge=0, le=5)
+):
+    """
+    Resme neon efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_neon_effect(image_data, glow_amount)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/vintage-effect/")
+async def vintage_effect(file: UploadFile = File(...)):
+    """
+    Resme vintage/eski fotoğraf efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_vintage_effect(image_data)
     return StreamingResponse(result, media_type="image/png")

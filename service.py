@@ -1,4 +1,4 @@
-from PIL import Image, ImageFilter, ImageOps, ImageDraw, ImageFont
+from PIL import Image, ImageFilter, ImageOps, ImageDraw, ImageFont, ImageEnhance
 from io import BytesIO
 from rembg import remove
 import cv2
@@ -393,35 +393,74 @@ class ImageProcessService:
 
         return shadow_image
 
-    def generate_social_media_profile(self, image_data, background_color=(255, 255, 255)):
+    def generate_social_media_profile(self, image_data):
         """
-        Yuvarlak sosyal medya profil fotoğrafı hazırlar.
+        Gelişmiş sosyal medya profil fotoğrafı hazırlar.
+        Arka plan kaldırma, renk dengeleme ve keskinleştirme uygular.
         
-        :param image_data: Yüklenen resmin byte verisi.
-        :param background_color: Arka plan rengi.
-        :return: Yuvarlak formatlı profil fotoğrafının byte verisi.
+        :param image_data: Yüklenen resmin byte verisi
+        :return: İşlenmiş profil fotoğrafının byte verisi
         """
-        image = Image.open(BytesIO(image_data)).convert("RGBA")
-        width, height = image.size
-        size = min(width, height)
+        # 1. Arka planı kaldır
+        no_bg_buffer = self.remove_background_and_add_shadow(image_data)
 
-        # Kare format oluştur
-        cropped_image = image.crop(((width - size) // 2, (height - size) // 2, (width + size) // 2, (height + size) // 2))
+        image = Image.open(no_bg_buffer).convert("RGBA")
 
-        # Yuvarlak maske oluştur
-        mask = Image.new("L", (size, size), 0)
+        # 2. Renk geliştirmeleri
+        # Kontrast artır
+        contrast = ImageEnhance.Contrast(image)
+        image = contrast.enhance(1.2)
+        
+        # Renk doygunluğunu artır
+        color = ImageEnhance.Color(image)
+        image = color.enhance(1.1)
+        
+        # Parlaklığı dengele
+        brightness = ImageEnhance.Brightness(image)
+        image = brightness.enhance(1.05)
+        
+        # Keskinliği artır
+        sharpness = ImageEnhance.Sharpness(image)
+        image = sharpness.enhance(1.5)
+        
+        # 3. Resmi merkeze yerleştir ve boyutlandır
+        target_size = (1024, 1024)
+        
+        # Oran korunarak yeniden boyutlandırma
+        aspect_ratio = image.size[0] / image.size[1]
+        if aspect_ratio > 1:
+            new_width = target_size[0]
+            new_height = int(target_size[0] / aspect_ratio)
+        else:
+            new_height = target_size[1]
+            new_width = int(target_size[1] * aspect_ratio)
+            
+        image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Merkeze yerleştirme
+        new_image = Image.new('RGBA', target_size, (0, 0, 0, 0))
+        paste_x = (target_size[0] - new_width) // 2
+        paste_y = (target_size[1] - new_height) // 2
+        new_image.paste(image, (paste_x, paste_y), image)
+        image = new_image
+        
+        # 4. Dairesel kırpma için maske oluştur
+        mask = Image.new('L', target_size, 0)
         draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0, size, size), fill=255)
-
-        # Yuvarlak resmi beyaz arka planla birleştir
-        output_image = Image.new("RGBA", (size, size), background_color + (255,))
-        output_image.paste(cropped_image, (0, 0), mask)
-
+        draw.ellipse((0, 0) + target_size, fill=255)
+        
+        # Yumuşak kenarlar için mask'e blur uygula
+        mask = mask.filter(ImageFilter.GaussianBlur(1))
+        
+        # 5. Son görüntüyü oluştur
+        output = Image.new('RGBA', target_size, (0, 0, 0, 0))
+        output.paste(image, (0, 0), mask)
+        
         # Sonucu döndür
         output_buffer = BytesIO()
-        output_image.save(output_buffer, format="PNG")
+        output.save(output_buffer, format="PNG", quality=95)
         output_buffer.seek(0)
-
+        
         return output_buffer
 
     def remove_text(self, image_data):
@@ -458,4 +497,138 @@ class ImageProcessService:
         output_image.save(output_buffer, format="PNG")
         output_buffer.seek(0)
 
+        return output_buffer
+
+    def apply_cartoon_effect(self, image_data):
+        """
+        Resmi çizgi film tarzına dönüştürür.
+        
+        :param image_data: Yüklenen resmin byte verisi.
+        :return: Çizgi film efekti uygulanmış resmin byte verisi.
+        """
+        image = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
+        
+        # Gri tonlamaya çevir
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Kenarları yumuşat
+        gray = cv2.medianBlur(gray, 5)
+        
+        # Kenarları tespit et
+        edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, 
+                                    cv2.THRESH_BINARY, 9, 9)
+        
+        # Renk azaltma
+        color = cv2.bilateralFilter(image, 9, 300, 300)
+        
+        # Kenarlar ve renkleri birleştir
+        cartoon = cv2.bitwise_and(color, color, mask=edges)
+        
+        # PIL formatına dönüştür
+        cartoon_image = Image.fromarray(cv2.cvtColor(cartoon, cv2.COLOR_BGR2RGB))
+        
+        output_buffer = BytesIO()
+        cartoon_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_glitch_effect(self, image_data, intensity=0.1):
+        """
+        Resme glitch (bozulma) efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi.
+        :param intensity: Efekt yoğunluğu (0-1 arası)
+        :return: Glitch efekti uygulanmış resmin byte verisi.
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_array = np.array(image)
+        
+        # Rastgele kanal seçimi ve kaydırma
+        channels = ['r', 'g', 'b']
+        for _ in range(int(intensity * 10)):
+            channel = np.random.choice(channels)
+            shift = np.random.randint(-20, 20)
+            
+            if channel == 'r':
+                image_array[:, :, 0] = np.roll(image_array[:, :, 0], shift, axis=1)
+            elif channel == 'g':
+                image_array[:, :, 1] = np.roll(image_array[:, :, 1], shift, axis=1)
+            else:
+                image_array[:, :, 2] = np.roll(image_array[:, :, 2], shift, axis=1)
+        
+        glitched_image = Image.fromarray(image_array)
+        
+        output_buffer = BytesIO()
+        glitched_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_neon_effect(self, image_data, glow_amount=2.5):
+        """
+        Resme neon efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi.
+        :param glow_amount: Parlaklık miktarı
+        :return: Neon efekti uygulanmış resmin byte verisi.
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_array = np.array(image)
+        
+        # Kenarları belirginleştir
+        edges = cv2.Canny(image_array, 100, 200)
+        edges = cv2.dilate(edges, None)
+        
+        # Parlama efekti
+        blurred = cv2.GaussianBlur(image_array, (0, 0), glow_amount)
+        neon = cv2.addWeighted(image_array, 1.2, blurred, 0.5, 0)
+        
+        # Kenarları vurgula
+        neon[edges > 0] = [255, 255, 255]
+        
+        neon_image = Image.fromarray(neon)
+        
+        output_buffer = BytesIO()
+        neon_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_vintage_effect(self, image_data):
+        """
+        Resme vintage/eski fotoğraf efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi.
+        :return: Vintage efekti uygulanmış resmin byte verisi.
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        
+        # Kontrast ve parlaklığı ayarla
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(0.8)
+        enhancer = ImageEnhance.Brightness(image)
+        image = enhancer.enhance(1.1)
+        
+        # Hafif sepya tonu ekle
+        image_array = np.array(image)
+        sepia_matrix = np.array([
+            [0.393, 0.769, 0.189],
+            [0.349, 0.686, 0.168],
+            [0.272, 0.534, 0.131]
+        ])
+        
+        vintage = cv2.transform(image_array, sepia_matrix)
+        vintage = np.clip(vintage, 0, 255)
+        
+        # Gren efekti ekle
+        noise = np.random.normal(0, 5, vintage.shape)
+        vintage = np.clip(vintage + noise, 0, 255).astype(np.uint8)
+        
+        vintage_image = Image.fromarray(vintage)
+        
+        output_buffer = BytesIO()
+        vintage_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
         return output_buffer
