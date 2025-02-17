@@ -16,6 +16,163 @@ class ImageProcessService:
         self.blur_radius = blur_radius
         self.shadow_color = shadow_color
 
+    def enhance_portrait(self, image_data):
+        """
+        Portre fotoğrafını geliştirir (yüz tanıma olmadan).
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Geliştirilmiş resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Yumuşak cilt efekti
+        blurred = cv2.GaussianBlur(image_np, (5, 5), 0)
+        image_np = cv2.addWeighted(image_np, 0.7, blurred, 0.3, 0)
+        
+        # Kontrast ve parlaklık artırma
+        enhanced = Image.fromarray(image_np)
+        enhancer = ImageEnhance.Contrast(enhanced)
+        enhanced = enhancer.enhance(1.2)
+        enhancer = ImageEnhance.Brightness(enhanced)
+        enhanced = enhancer.enhance(1.1)
+        
+        # Keskinlik artırma
+        enhancer = ImageEnhance.Sharpness(enhanced)
+        enhanced = enhancer.enhance(1.3)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_hdr_effect(self, image_data):
+        """
+        Resme HDR benzeri efekt uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: HDR efekti uygulanmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Görüntüyü LAB renk uzayına dönüştür
+        lab = cv2.cvtColor(image_np, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        
+        # CLAHE uygula
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        l_clahe = clahe.apply(l)
+        
+        # Görüntüyü birleştir
+        lab_clahe = cv2.merge((l_clahe, a, b))
+        rgb_clahe = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
+        
+        # Kontrast ve doygunluğu artır
+        enhanced = Image.fromarray(rgb_clahe)
+        enhancer = ImageEnhance.Contrast(enhanced)
+        enhanced = enhancer.enhance(1.2)
+        enhancer = ImageEnhance.Color(enhanced)
+        enhanced = enhancer.enhance(1.3)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def center_crop(self, image_data, target_width=500, target_height=500):
+        """
+        Resmi merkezi olarak kırpar.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param target_width: Hedef genişlik
+        :param target_height: Hedef yükseklik
+        :return: Kırpılmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data))
+        width, height = image.size
+        
+        # Merkezi kırpma koordinatlarını hesapla
+        left = (width - target_width) // 2
+        top = (height - target_height) // 2
+        right = left + target_width
+        bottom = top + target_height
+        
+        # Kırp
+        cropped = image.crop((left, top, right, bottom))
+        
+        output_buffer = BytesIO()
+        cropped.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def auto_enhance(self, image_data):
+        """
+        Otomatik renk ve kontrast iyileştirmesi yapar.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: İyileştirilmiş resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        
+        # Otomatik kontrast
+        enhanced = ImageOps.autocontrast(image)
+        
+        # Renk dengeleme
+        enhancer = ImageEnhance.Color(enhanced)
+        enhanced = enhancer.enhance(1.2)
+        
+        # Parlaklık ayarlama
+        enhancer = ImageEnhance.Brightness(enhanced)
+        enhanced = enhancer.enhance(1.1)
+        
+        # Keskinlik artırma
+        enhancer = ImageEnhance.Sharpness(enhanced)
+        enhanced = enhancer.enhance(1.3)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_dramatic_effect(self, image_data):
+        """
+        Dramatik fotoğraf efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Efekt uygulanmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Kontrast artırma
+        contrast = cv2.convertScaleAbs(image_np, alpha=1.3, beta=0)
+        
+        # Vignette efekti
+        rows, cols = contrast.shape[:2]
+        kernel_x = cv2.getGaussianKernel(cols, cols/4)
+        kernel_y = cv2.getGaussianKernel(rows, rows/4)
+        kernel = kernel_y * kernel_x.T
+        mask = 255 * kernel / np.linalg.norm(kernel)
+        
+        for i in range(3):
+            contrast[:,:,i] = contrast[:,:,i] * mask
+        
+        # Renk doygunluğunu artır
+        enhanced = Image.fromarray(contrast)
+        enhancer = ImageEnhance.Color(enhanced)
+        enhanced = enhancer.enhance(1.5)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
     def remove_background(self, image_data, width=None, height=None):
         """
         Görüntünün arka planını kaldırır.
@@ -232,7 +389,6 @@ class ImageProcessService:
 
         return output_buffer
 
-
     def pixelate_image(self, image_data, pixel_size=10):
         """
         Resme mozaik (pixelate) efekti uygular.
@@ -341,7 +497,6 @@ class ImageProcessService:
 
         return output_buffer
 
-
     def standardize_aspect_ratio(self, image_data, target_width=500, target_height=500, background_color=(255, 255, 255)):
         """
         Resmin oranını standartlaştırır ve hedef boyutlara göre beyaz arka plan ekler.
@@ -373,7 +528,6 @@ class ImageProcessService:
         output_buffer.seek(0)
 
         return output_buffer
-
 
     def remove_background_and_add_shadow(self, image_data, shadow_opacity=120, blur_radius=15, shadow_offset=(15, 15)):
         """
@@ -629,6 +783,132 @@ class ImageProcessService:
         
         output_buffer = BytesIO()
         vintage_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def smart_crop(self, image_data, target_width=500, target_height=500):
+        """
+        Akıllı kırpma uygular (OpenCV ile yüz tespiti kullanarak).
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param target_width: Hedef genişlik
+        :param target_height: Hedef yükseklik
+        :return: Kırpılmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # OpenCV'nin cascade sınıflandırıcısını yükle
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        # Gri tonlamaya çevir
+        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        
+        # Yüz tespiti yap
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        
+        if len(faces) > 0:
+            # En büyük yüzü seç
+            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+            center_x = x + w//2
+            center_y = y + h//2
+            
+            # Kırpma sınırlarını hesapla
+            half_width = min(target_width // 2, image_np.shape[1] // 2)
+            half_height = min(target_height // 2, image_np.shape[0] // 2)
+            
+            left = max(center_x - half_width, 0)
+            top = max(center_y - half_height, 0)
+            right = min(left + target_width, image_np.shape[1])
+            bottom = min(top + target_height, image_np.shape[0])
+        else:
+            # Yüz yoksa, merkezi kırp
+            height, width = image_np.shape[:2]
+            left = (width - target_width) // 2
+            top = (height - target_height) // 2
+            right = left + target_width
+            bottom = top + target_height
+        
+        # Kırp ve kaydet
+        cropped = image.crop((left, top, right, bottom))
+        cropped = cropped.resize((target_width, target_height))
+        
+        output_buffer = BytesIO()
+        cropped.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def beautify_face(self, image_data):
+        """
+        Basit yüz güzelleştirme efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Güzelleştirilmiş resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Yumuşak cilt efekti
+        blurred = cv2.GaussianBlur(image_np, (5, 5), 0)
+        image_np = cv2.addWeighted(image_np, 0.7, blurred, 0.3, 0)
+        
+        # Kontrast ve parlaklık artırma
+        enhanced = Image.fromarray(image_np)
+        enhancer = ImageEnhance.Contrast(enhanced)
+        enhanced = enhancer.enhance(1.2)
+        enhancer = ImageEnhance.Brightness(enhanced)
+        enhanced = enhancer.enhance(1.1)
+        
+        # Keskinlik artırma
+        enhancer = ImageEnhance.Sharpness(enhanced)
+        enhanced = enhancer.enhance(1.3)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def auto_color_correction(self, image_data):
+        """
+        Otomatik renk düzeltme uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Renk düzeltmesi yapılmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Renk kanallarını ayır
+        r, g, b = cv2.split(image_np)
+        
+        # Her kanal için histogram eşitleme
+        r_eq = cv2.equalizeHist(r)
+        g_eq = cv2.equalizeHist(g)
+        b_eq = cv2.equalizeHist(b)
+        
+        # Kanalları birleştir
+        image_eq = cv2.merge((r_eq, g_eq, b_eq))
+        
+        # Kontrast Sınırlı Adaptif Histogram Eşitleme (CLAHE)
+        lab = cv2.cvtColor(image_eq, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        l_clahe = clahe.apply(l)
+        
+        # LAB görüntüsünü birleştir
+        lab_clahe = cv2.merge((l_clahe, a, b))
+        
+        # RGB'ye geri dönüştür
+        corrected = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
+        
+        # Sonucu kaydet
+        corrected_image = Image.fromarray(corrected)
+        output_buffer = BytesIO()
+        corrected_image.save(output_buffer, format="PNG")
         output_buffer.seek(0)
         
         return output_buffer

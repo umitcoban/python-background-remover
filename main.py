@@ -242,3 +242,83 @@ async def vintage_effect(file: UploadFile = File(...)):
     image_data = await file.read()
     result = service.apply_vintage_effect(image_data)
     return StreamingResponse(result, media_type="image/png")
+
+@app.post("/beautify-face/")
+async def beautify_face(file: UploadFile = File(...)):
+    """
+    Yüz güzelleştirme efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.beautify_face(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/hdr-effect/")
+async def hdr_effect(file: UploadFile = File(...)):
+    """
+    HDR efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_hdr_effect(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/smart-crop/")
+async def smart_crop(
+    file: UploadFile = File(...),
+    target_width: int = Query(500),
+    target_height: int = Query(500)
+):
+    """
+    Akıllı kırpma uygular.
+    """
+    image_data = await file.read()
+    result = service.smart_crop(image_data, target_width, target_height)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/auto-color-correction/")
+async def auto_color_correction(file: UploadFile = File(...)):
+    """
+    Otomatik renk düzeltme uygular.
+    """
+    image_data = await file.read()
+    result = service.auto_color_correction(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/enhance-portrait/")
+async def enhance_portrait(file: UploadFile = File(...)):
+    """
+    Portre fotoğrafını geliştirir.
+    """
+    image_data = await file.read()
+    result = service.enhance_portrait(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/center-crop/")
+async def center_crop(
+    file: UploadFile = File(...),
+    target_width: int = Query(500),
+    target_height: int = Query(500)
+):
+    """
+    Resmi merkezi olarak kırpar.
+    """
+    image_data = await file.read()
+    result = service.center_crop(image_data, target_width, target_height)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/auto-enhance/")
+async def auto_enhance(file: UploadFile = File(...)):
+    """
+    Otomatik renk ve kontrast iyileştirmesi yapar.
+    """
+    image_data = await file.read()
+    result = service.auto_enhance(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/dramatic-effect/")
+async def dramatic_effect(file: UploadFile = File(...)):
+    """
+    Dramatik fotoğraf efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_dramatic_effect(image_data)
+    return StreamingResponse(result, media_type="image/png")
