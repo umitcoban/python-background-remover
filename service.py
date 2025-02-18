@@ -1181,9 +1181,9 @@ class ImageProcessService:
                 blurred.gaussian_blur(sigma=blur_factor)
                 
                 # Merkez bölge için maske oluştur
-                with WandImage(width=img.width, height=img.height, pseudo='gradient:white-black-white') as mask:
-                    # Maskeli birleştirme
-                    img.composite(blurred, operator='blur', mask=mask)
+                with WandImage(width=img.width, height=img.height, pseudo='gradient:white-black-white') as gradient:
+                    # Gradient'i maske olarak kullan
+                    img.composite_channel('all_channels', blurred, 'blend', 0, 0, arguments=str(gradient.signature))
             
             # Renk ve kontrast ayarla
             img.modulate(brightness=105, saturation=120)
@@ -1200,25 +1200,45 @@ class ImageProcessService:
         :return: Color splash efekti uygulanmış resmin byte verisi
         """
         with WandImage(blob=image_data) as img:
-            # Orijinal resmin kopyasını al
-            with img.clone() as color_img:
-                # Ana resmi siyah-beyaz yap
-                img.modulate(saturation=0)
+            # Orijinal resmin kopyasını al ve siyah-beyaz yap
+            with img.clone() as bw_img:
+                bw_img.modulate(saturation=0)
                 
-                # Renk aralığını belirle
-                if color_to_keep == 'red':
-                    color_img.color_threshold(low='rgb(100,0,0)', high='rgb(255,80,80)')
-                elif color_to_keep == 'blue':
-                    color_img.color_threshold(low='rgb(0,0,100)', high='rgb(80,80,255)')
-                elif color_to_keep == 'green':
-                    color_img.color_threshold(low='rgb(0,100,0)', high='rgb(80,255,80)')
-                elif color_to_keep == 'yellow':
-                    color_img.color_threshold(low='rgb(100,100,0)', high='rgb(255,255,80)')
+                # Renk maskeleme için yeni bir görüntü oluştur
+                with img.clone() as mask:
+                    # Seçilen rengi vurgula
+                    if color_to_keep == 'red':
+                        mask.level(0.4, 0.8, gamma=1.2, channel='red')
+                        mask.level(0.0, 0.5, gamma=0.8, channel='green')
+                        mask.level(0.0, 0.5, gamma=0.8, channel='blue')
+                    elif color_to_keep == 'blue':
+                        mask.level(0.0, 0.5, gamma=0.8, channel='red')
+                        mask.level(0.0, 0.5, gamma=0.8, channel='green')
+                        mask.level(0.4, 0.8, gamma=1.2, channel='blue')
+                    elif color_to_keep == 'green':
+                        mask.level(0.0, 0.5, gamma=0.8, channel='red')
+                        mask.level(0.4, 0.8, gamma=1.2, channel='green')
+                        mask.level(0.0, 0.5, gamma=0.8, channel='blue')
+                    elif color_to_keep == 'yellow':
+                        mask.level(0.4, 0.8, gamma=1.2, channel='red')
+                        mask.level(0.4, 0.8, gamma=1.2, channel='green')
+                        mask.level(0.0, 0.5, gamma=0.8, channel='blue')
+                    
+                    # Maskeyi gri tonlamaya çevir
+                    mask.transform_colorspace('gray')
+                    
+                    # Maskeyi keskinleştir
+                    mask.sharpen(radius=0, sigma=3.0)
+                    
+                    # Orijinal ve siyah-beyaz görüntüleri birleştir
+                    bw_img.composite(img, operator='copy_opacity')
+                    bw_img.composite(mask, operator='multiply')
                 
-                # Resimleri birleştir
-                img.composite(color_img, operator='copy_opacity')
-            
-            return BytesIO(img.make_blob('png'))
+                output_buffer = BytesIO()
+                bw_img.save(output_buffer, format='png')
+                output_buffer.seek(0)
+                
+                return output_buffer
 
     def apply_mirror_effect(self, image_data, direction='horizontal'):
         """
@@ -1282,8 +1302,8 @@ class ImageProcessService:
         :return: Dalga efekti uygulanmış resmin byte verisi
         """
         with WandImage(blob=image_data) as img:
-            # Dalga efekti uygula
-            img.wave(amplitude=amplitude, wavelength=wavelength)
+            # Dalga efekti uygula (wave_length parametresi düzeltildi)
+            img.wave(amplitude=amplitude, wave_length=wavelength)
             
             # Kenarları düzelt
             img.trim()
