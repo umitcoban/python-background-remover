@@ -3,6 +3,8 @@ from io import BytesIO
 from rembg import remove
 import cv2
 import numpy as np
+from skimage import filters, feature, exposure
+from wand.image import Image as WandImage
 
 class ImageProcessService:
     def __init__(self, shadow_offset=(15, 15), blur_radius=15, shadow_color=(0, 0, 0, 120)):
@@ -912,3 +914,137 @@ class ImageProcessService:
         output_buffer.seek(0)
         
         return output_buffer
+
+    def apply_watercolor_effect(self, image_data):
+        """
+        Resme suluboya efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Suluboya efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Suluboya efekti
+            img.watercolor(saturation=0.5, brightness=0.5)
+            
+            # Sonucu döndür
+            return BytesIO(img.make_blob('png'))
+
+    def reduce_noise(self, image_data, strength=0.1):
+        """
+        Görüntüdeki gürültüyü azaltır.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param strength: Gürültü azaltma şiddeti (0-1 arası)
+        :return: Gürültüsü azaltılmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Bilateral filtre uygula
+        denoised = cv2.bilateralFilter(image_np, 9, 75*strength, 75*strength)
+        
+        # Non-local means denoising
+        denoised = cv2.fastNlMeansDenoisingColored(denoised, None, 10*strength, 10*strength, 7, 21)
+        
+        output_image = Image.fromarray(denoised)
+        output_buffer = BytesIO()
+        output_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_texture(self, image_data, texture_type="canvas"):
+        """
+        Resme doku efekti ekler.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param texture_type: Doku tipi ("canvas", "paper", "concrete")
+        :return: Doku eklenmiş resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            if texture_type == "canvas":
+                img.texture("canvas")
+            elif texture_type == "paper":
+                img.texture("paper")
+            elif texture_type == "concrete":
+                img.texture("concrete")
+            
+            return BytesIO(img.make_blob('png'))
+
+    def enhance_details(self, image_data):
+        """
+        Görüntüdeki detayları geliştirir.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Detayları geliştirilmiş resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Lab renk uzayına dönüştür
+        lab = cv2.cvtColor(image_np, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        
+        # L kanalında detay geliştirme
+        enhanced_l = exposure.equalize_adapthist(l, clip_limit=0.03)
+        enhanced_l = (enhanced_l * 255).astype(np.uint8)
+        
+        # Kanalları birleştir
+        enhanced_lab = cv2.merge([enhanced_l, a, b])
+        enhanced_rgb = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
+        
+        # Keskinlik artır
+        enhanced = Image.fromarray(enhanced_rgb)
+        enhancer = ImageEnhance.Sharpness(enhanced)
+        enhanced = enhancer.enhance(1.5)
+        
+        output_buffer = BytesIO()
+        enhanced.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_pencil_sketch(self, image_data, pencil_type="soft"):
+        """
+        Resmi karakalem çizimine dönüştürür.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param pencil_type: Kalem tipi ("soft" veya "hard")
+        :return: Karakalem efekti uygulanmış resmin byte verisi
+        """
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Gri tonlamaya çevir
+        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        
+        if pencil_type == "soft":
+            # Yumuşak karakalem efekti
+            blurred = cv2.GaussianBlur(gray, (21, 21), 0)
+            sketch = cv2.divide(gray, blurred + 1, scale=256.0)
+        else:
+            # Sert karakalem efekti
+            edges = feature.canny(gray, sigma=2)
+            sketch = np.invert(edges) * 255
+        
+        # Sonucu döndür
+        sketch_image = Image.fromarray(sketch.astype(np.uint8))
+        output_buffer = BytesIO()
+        sketch_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
+
+    def apply_oil_painting(self, image_data, brush_size=5):
+        """
+        Resme yağlı boya efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param brush_size: Fırça boyutu
+        :return: Yağlı boya efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Yağlı boya efekti
+            img.oil_paint(radius=brush_size, sigma=1.5)
+            
+            return BytesIO(img.make_blob('png'))

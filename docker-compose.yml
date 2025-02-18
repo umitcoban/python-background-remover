@@ -9,3 +9,19 @@ services:
       - .:/app
     environment:
       - ENV=production
+      - MAGICK_MEMORY_LIMIT=2048MB
+      - MAGICK_MAP_LIMIT=512MB
+      - MAGICK_THREAD_LIMIT=3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped

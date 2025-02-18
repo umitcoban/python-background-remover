@@ -322,3 +322,69 @@ async def dramatic_effect(file: UploadFile = File(...)):
     image_data = await file.read()
     result = service.apply_dramatic_effect(image_data)
     return StreamingResponse(result, media_type="image/png")
+
+@app.post("/watercolor/")
+async def watercolor(file: UploadFile = File(...)):
+    """
+    Resme suluboya efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_watercolor_effect(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/reduce-noise/")
+async def reduce_noise(
+    file: UploadFile = File(...),
+    strength: float = Query(0.1, ge=0, le=1)
+):
+    """
+    Görüntüdeki gürültüyü azaltır.
+    """
+    image_data = await file.read()
+    result = service.reduce_noise(image_data, strength)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/texture/")
+async def add_texture(
+    file: UploadFile = File(...),
+    texture_type: str = Query("canvas", regex="^(canvas|paper|concrete)$")
+):
+    """
+    Resme doku efekti ekler.
+    """
+    image_data = await file.read()
+    result = service.apply_texture(image_data, texture_type)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/enhance-details/")
+async def enhance_details(file: UploadFile = File(...)):
+    """
+    Görüntüdeki detayları geliştirir.
+    """
+    image_data = await file.read()
+    result = service.enhance_details(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/pencil-sketch/")
+async def pencil_sketch(
+    file: UploadFile = File(...),
+    pencil_type: str = Query("soft", regex="^(soft|hard)$")
+):
+    """
+    Resmi karakalem çizimine dönüştürür.
+    """
+    image_data = await file.read()
+    result = service.apply_pencil_sketch(image_data, pencil_type)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/oil-painting/")
+async def oil_painting(
+    file: UploadFile = File(...),
+    brush_size: int = Query(5, ge=1, le=10)
+):
+    """
+    Resme yağlı boya efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_oil_painting(image_data, brush_size)
+    return StreamingResponse(result, media_type="image/png")
