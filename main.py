@@ -392,7 +392,7 @@ async def oil_painting(
 @app.post("/polaroid/")
 async def polaroid_effect(file: UploadFile = File(...)):
     """
-    Resme polaroid fotoğraf efekti uygular.
+    Polaroid fotoğraf efekti uygular.
     """
     image_data = await file.read()
     result = service.apply_polaroid_effect(image_data)
@@ -427,10 +427,10 @@ async def duotone(
 @app.post("/tilt-shift/")
 async def tilt_shift(
     file: UploadFile = File(...),
-    blur_factor: int = Query(5, ge=1, le=10)
+    blur_factor: float = Query(5.0, ge=0.1, le=20.0)
 ):
     """
-    Resme minyatür (tilt-shift) efekti uygular.
+    Minyatür efekti (tilt-shift) uygular.
     """
     image_data = await file.read()
     result = service.apply_tilt_shift(image_data, blur_factor)
@@ -463,7 +463,7 @@ async def mirror_effect(
 @app.post("/kaleidoscope/")
 async def kaleidoscope(
     file: UploadFile = File(...),
-    segments: int = Query(8, ge=3, le=12)
+    segments: int = Query(8, ge=3, le=24)
 ):
     """
     Resme kaleydoskop efekti uygular.
@@ -483,4 +483,97 @@ async def wave_distortion(
     """
     image_data = await file.read()
     result = service.apply_wave_distortion(image_data, amplitude, wavelength)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/vignette/")
+async def vignette_effect(
+    file: UploadFile = File(...),
+    sigma: float = Query(3.0, ge=0.1, le=10.0),
+    opacity: float = Query(0.5, ge=0.1, le=1.0)
+):
+    """
+    Resme vignette (kenar kararma) efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_vignette(image_data, sigma, opacity)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/gradient-map/")
+async def gradient_map(
+    file: UploadFile = File(...),
+    start_color: str = Query("blue", regex="^[a-zA-Z]+$"),
+    end_color: str = Query("red", regex="^[a-zA-Z]+$")
+):
+    """
+    Resme gradient map efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_gradient_map(image_data, start_color, end_color)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/selective-color/")
+async def selective_color(
+    file: UploadFile = File(...),
+    target_color: str = Query("red", regex="^(red|green|blue|cyan|magenta|yellow)$"),
+    adjustment: float = Query(0.2, ge=-1.0, le=1.0)
+):
+    """
+    Belirli bir renk kanalını seçici olarak ayarlar.
+    """
+    image_data = await file.read()
+    result = service.apply_selective_color(image_data, target_color, adjustment)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/cross-process/")
+async def cross_process(
+    file: UploadFile = File(...),
+    intensity: float = Query(0.3, ge=0.0, le=1.0)
+):
+    """
+    Cross processing efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_cross_process(image_data, intensity)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/lomo/")
+async def lomo_effect(file: UploadFile = File(...)):
+    """
+    Lomo fotoğraf efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_lomo(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/bleach-bypass/")
+async def bleach_bypass(
+    file: UploadFile = File(...),
+    intensity: float = Query(0.5, ge=0.0, le=1.0)
+):
+    """
+    Bleach bypass efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_bleach_bypass(image_data, intensity)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/infrared/")
+async def infrared_effect(file: UploadFile = File(...)):
+    """
+    Kızılötesi fotoğraf efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_infrared(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/cinematic/")
+async def cinematic_effect(
+    file: UploadFile = File(...),
+    tone: str = Query("cool", regex="^(cool|warm)$")
+):
+    """
+    Sinematik renk tonu efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_cinematic(image_data, tone)
     return StreamingResponse(result, media_type="image/png")

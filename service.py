@@ -1309,3 +1309,221 @@ class ImageProcessService:
             img.trim()
             
             return BytesIO(img.make_blob('png'))
+
+    def apply_vignette(self, image_data, sigma=3.0, opacity=0.5):
+        """
+        Resme vignette (kenar kararma) efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param sigma: Kenar yumuşatma miktarı
+        :param opacity: Kenar kararma opaklığı
+        :return: Vignette efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Orijinal boyutları al
+            width = img.width
+            height = img.height
+            
+            # Oval maske oluştur
+            with WandImage(width=width, height=height, pseudo='radial-gradient:rgba(255,255,255,1)-rgba(0,0,0,1)') as mask:
+                # Maskeyi yumuşat
+                mask.gaussian_blur(sigma=sigma)
+                
+                # Opaklığı ayarla
+                mask.evaluate(operator='multiply', value=opacity)
+                
+                # Maskeyi uygula
+                img.composite(mask, operator='multiply')
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_gradient_map(self, image_data, start_color='blue', end_color='red'):
+        """
+        Resme gradient map efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param start_color: Başlangıç rengi
+        :param end_color: Bitiş rengi
+        :return: Gradient map efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Önce gri tonlamaya çevir
+            img.transform_colorspace('gray')
+            
+            # Gradient oluştur
+            with WandImage(width=img.width, height=img.height, pseudo=f'gradient:{start_color}-{end_color}') as gradient:
+                # Gri tonlamalı görüntüyü maske olarak kullan
+                gradient.composite(img, operator='atop')
+                
+                # Sonucu orijinal görüntüye uygula
+                img.composite(gradient, operator='replace')
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_selective_color(self, image_data, target_color='red', adjustment=0.2):
+        """
+        Belirli bir renk kanalını seçici olarak ayarlar.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param target_color: Hedef renk ('red', 'green', 'blue', 'cyan', 'magenta', 'yellow')
+        :param adjustment: Ayarlama miktarı (-1.0 ile 1.0 arası)
+        :return: Renk ayarı yapılmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Renk kanalını seç ve ayarla
+            if target_color in ['red', 'green', 'blue']:
+                img.level(black=0.0, white=1.0, gamma=1.0 + adjustment, channel=target_color)
+            elif target_color == 'cyan':
+                img.level(black=0.0, white=1.0, gamma=1.0 + adjustment, channel='red')
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='green')
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='blue')
+            elif target_color == 'magenta':
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='red')
+                img.level(black=0.0, white=1.0, gamma=1.0 + adjustment, channel='green')
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='blue')
+            elif target_color == 'yellow':
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='red')
+                img.level(black=0.0, white=1.0, gamma=1.0 - adjustment, channel='green')
+                img.level(black=0.0, white=1.0, gamma=1.0 + adjustment, channel='blue')
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_cross_process(self, image_data, intensity=0.3):
+        """
+        Cross processing efekti uygular (analog fotoğrafçılıktan esinlenilmiş).
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param intensity: Efekt yoğunluğu (0.0 ile 1.0 arası)
+        :return: Cross process efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Renk kanallarını ayarla
+            img.level(black=0.0, white=1.0, gamma=1.2, channel='red')
+            img.level(black=0.0, white=1.0, gamma=0.8, channel='blue')
+            
+            # Kontrast artır
+            img.contrast_stretch(black_point=0.1 * intensity)
+            
+            # Doygunluğu artır
+            img.modulate(saturation=100 + (50 * intensity))
+            
+            # Hafif renk kayması
+            img.evaluate(operator='add', value=intensity * 10, channel='green')
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_lomo(self, image_data):
+        """
+        Lomo fotoğraf efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Lomo efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Renk doygunluğunu artır
+            img.modulate(saturation=150)
+            
+            # Kontrast artır
+            img.contrast_stretch(black_point=0.15, white_point=0.95)
+            
+            # Vignette efekti ekle
+            with WandImage(width=img.width, height=img.height, pseudo='radial-gradient:rgba(255,255,255,1)-rgba(0,0,0,0.5)') as vignette:
+                vignette.gaussian_blur(sigma=10)
+                img.composite(vignette, operator='multiply')
+            
+            # Renk sıcaklığını artır
+            img.modulate(brightness=110, saturation=150, hue=95)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_bleach_bypass(self, image_data, intensity=0.5):
+        """
+        Bleach bypass efekti uygular (film işlemeden esinlenilmiş).
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param intensity: Efekt yoğunluğu (0.0 ile 1.0 arası)
+        :return: Bleach bypass efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Orijinal görüntüyü kopyala
+            with img.clone() as overlay:
+                # Gri tonlamaya çevir
+                overlay.transform_colorspace('gray')
+                
+                # Kontrastı artır
+                overlay.contrast_stretch(black_point=0.1, white_point=0.9)
+                
+                # Opaklığı ayarla
+                overlay.evaluate(operator='multiply', value=intensity)
+                
+                # Orijinal görüntü ile karıştır
+                img.composite(overlay, operator='overlay')
+            
+            # Doygunluğu azalt
+            img.modulate(saturation=100 - (30 * intensity))
+            
+            # Kontrastı artır
+            img.contrast_stretch(black_point=0.1 * intensity)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_infrared(self, image_data):
+        """
+        Kızılötesi fotoğraf efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Kızılötesi efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Renk kanallarını ayarla
+            img.level(black=0.0, white=0.8, gamma=1.2, channel='red')
+            img.level(black=0.2, white=1.0, gamma=0.8, channel='blue')
+            
+            # Yeşil kanalı güçlendir
+            img.level(black=0.0, white=1.0, gamma=0.5, channel='green')
+            
+            # Kontrastı artır
+            img.contrast_stretch(black_point=0.1, white_point=0.9)
+            
+            # Glow efekti ekle
+            with img.clone() as glow:
+                glow.gaussian_blur(sigma=3)
+                # Glow efektinin yoğunluğunu ayarla
+                glow.evaluate(operator='multiply', value=0.3)  # %30 opaklık
+                img.composite(glow, operator='screen')
+            
+            # Son rötuşlar
+            img.modulate(brightness=120, saturation=50)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_cinematic(self, image_data, tone='cool'):
+        """
+        Sinematik renk tonu efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param tone: Renk tonu ('cool' veya 'warm')
+        :return: Sinematik efekt uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            if tone == 'cool':
+                # Soğuk tonlar için
+                img.level(black=0.1, white=0.9, gamma=1.1, channel='blue')
+                img.level(black=0.1, white=0.9, gamma=0.95, channel='red')
+            else:
+                # Sıcak tonlar için
+                img.level(black=0.1, white=0.9, gamma=0.95, channel='blue')
+                img.level(black=0.1, white=0.9, gamma=1.1, channel='red')
+            
+            # Kontrast ayarla
+            img.contrast_stretch(black_point=0.1, white_point=0.9)
+            
+            # Vignette efekti ekle
+            with WandImage(width=img.width, height=img.height, pseudo='radial-gradient:rgba(255,255,255,1)-rgba(0,0,0,0.3)') as vignette:
+                vignette.gaussian_blur(sigma=15)
+                img.composite(vignette, operator='multiply')
+            
+            # Renk doygunluğunu ayarla
+            img.modulate(saturation=85)
+            
+            return BytesIO(img.make_blob('png'))
