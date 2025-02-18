@@ -388,3 +388,99 @@ async def oil_painting(
     image_data = await file.read()
     result = service.apply_oil_painting(image_data, brush_size)
     return StreamingResponse(result, media_type="image/png")
+
+@app.post("/polaroid/")
+async def polaroid_effect(file: UploadFile = File(...)):
+    """
+    Resme polaroid fotoğraf efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_polaroid_effect(image_data)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/double-exposure/")
+async def double_exposure(
+    file1: UploadFile = File(...),
+    file2: UploadFile = File(...)
+):
+    """
+    İki resmi birleştirerek double exposure efekti uygular.
+    """
+    image_data1 = await file1.read()
+    image_data2 = await file2.read()
+    result = service.apply_double_exposure(image_data1, image_data2)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/duotone/")
+async def duotone(
+    file: UploadFile = File(...),
+    color1: str = Query("blue", regex="^[a-zA-Z]+$"),
+    color2: str = Query("pink", regex="^[a-zA-Z]+$")
+):
+    """
+    Resme duotone efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_duotone(image_data, color1, color2)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/tilt-shift/")
+async def tilt_shift(
+    file: UploadFile = File(...),
+    blur_factor: int = Query(5, ge=1, le=10)
+):
+    """
+    Resme minyatür (tilt-shift) efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_tilt_shift(image_data, blur_factor)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/color-splash/")
+async def color_splash(
+    file: UploadFile = File(...),
+    color_to_keep: str = Query("red", regex="^(red|green|blue|yellow)$")
+):
+    """
+    Seçilen renk dışındaki tüm renkleri siyah-beyaz yapar.
+    """
+    image_data = await file.read()
+    result = service.apply_color_splash(image_data, color_to_keep)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/mirror/")
+async def mirror_effect(
+    file: UploadFile = File(...),
+    direction: str = Query("horizontal", regex="^(horizontal|vertical)$")
+):
+    """
+    Resme ayna efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_mirror_effect(image_data, direction)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/kaleidoscope/")
+async def kaleidoscope(
+    file: UploadFile = File(...),
+    segments: int = Query(8, ge=3, le=12)
+):
+    """
+    Resme kaleydoskop efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_kaleidoscope(image_data, segments)
+    return StreamingResponse(result, media_type="image/png")
+
+@app.post("/wave/")
+async def wave_distortion(
+    file: UploadFile = File(...),
+    amplitude: int = Query(5, ge=1, le=10),
+    wavelength: int = Query(10, ge=5, le=20)
+):
+    """
+    Resme dalga distorsiyonu efekti uygular.
+    """
+    image_data = await file.read()
+    result = service.apply_wave_distortion(image_data, amplitude, wavelength)
+    return StreamingResponse(result, media_type="image/png")

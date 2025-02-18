@@ -922,12 +922,44 @@ class ImageProcessService:
         :param image_data: Yüklenen resmin byte verisi
         :return: Suluboya efekti uygulanmış resmin byte verisi
         """
-        with WandImage(blob=image_data) as img:
-            # Suluboya efekti
-            img.watercolor(saturation=0.5, brightness=0.5)
-            
-            # Sonucu döndür
-            return BytesIO(img.make_blob('png'))
+        # Resmi yükle
+        image = Image.open(BytesIO(image_data)).convert('RGB')
+        image_np = np.array(image)
+        
+        # Bilateral filtre uygula (kenarları koru, dokuları yumuşat)
+        bilateral = cv2.bilateralFilter(image_np, 9, 75, 75)
+        
+        # Median blur uygula (suluboya dokusu için)
+        median = cv2.medianBlur(bilateral, 7)
+        
+        # Kenarları belirginleştir
+        edges = cv2.Canny(median, 50, 150)
+        edges = cv2.dilate(edges, None)
+        
+        # Renk doygunluğunu artır
+        hsv = cv2.cvtColor(median, cv2.COLOR_RGB2HSV)
+        hsv[:,:,1] = hsv[:,:,1] * 1.4  # Doygunluğu artır
+        hsv[:,:,1] = np.clip(hsv[:,:,1], 0, 255)
+        saturated = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+        
+        # Kenarları ekle
+        result = saturated.copy()
+        result[edges > 0] = [0, 0, 0]
+        
+        # Hafif bulanıklaştır
+        result = cv2.GaussianBlur(result, (3, 3), 0)
+        
+        # Kontrast artır
+        result = cv2.convertScaleAbs(result, alpha=1.1, beta=10)
+        
+        # PIL formatına dönüştür ve kaydet
+        watercolor_image = Image.fromarray(result)
+        
+        output_buffer = BytesIO()
+        watercolor_image.save(output_buffer, format="PNG")
+        output_buffer.seek(0)
+        
+        return output_buffer
 
     def reduce_noise(self, image_data, strength=0.1):
         """
@@ -962,12 +994,27 @@ class ImageProcessService:
         :return: Doku eklenmiş resmin byte verisi
         """
         with WandImage(blob=image_data) as img:
+            # Temel görüntü işleme
+            img.modulate(brightness=100, saturation=100, hue=100)
+            
             if texture_type == "canvas":
-                img.texture("canvas")
+                # Tuval dokusu
+                img.noise("gaussian", attenuate=0.5)
+                img.motion_blur(radius=2, sigma=1, angle=45)
+                img.sharpen(radius=2, sigma=1)
             elif texture_type == "paper":
-                img.texture("paper")
+                # Kağıt dokusu
+                img.noise("gaussian", attenuate=0.3)
+                img.blur(radius=0, sigma=0.5)
+                img.sharpen(radius=1, sigma=0.5)
             elif texture_type == "concrete":
-                img.texture("concrete")
+                # Beton dokusu
+                img.noise("uniform", attenuate=0.2)
+                img.motion_blur(radius=1, sigma=0.5, angle=90)
+                img.sharpen(radius=1, sigma=1)
+            
+            # Kontrast ayarı
+            img.contrast_stretch(black_point=0.15, white_point=0.95)
             
             return BytesIO(img.make_blob('png'))
 
@@ -1046,5 +1093,199 @@ class ImageProcessService:
         with WandImage(blob=image_data) as img:
             # Yağlı boya efekti
             img.oil_paint(radius=brush_size, sigma=1.5)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_polaroid_effect(self, image_data):
+        """
+        Polaroid fotoğraf efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :return: Polaroid efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Beyaz çerçeve ekle
+            img.border('white', 20, 20)
+            
+            # Alt kısmı daha geniş yap
+            img.border('white', 0, 60)
+            
+            # Hafif vintage efekti
+            img.modulate(brightness=105, saturation=85, hue=100)
+            
+            # Hafif bulanıklık
+            img.gaussian_blur(sigma=0.5)
+            
+            # Kontrast ayarla
+            img.contrast_stretch(black_point=0.15, white_point=0.95)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_double_exposure(self, image_data1, image_data2):
+        """
+        İki resmi birleştirerek double exposure efekti uygular.
+        
+        :param image_data1: Birinci resmin byte verisi
+        :param image_data2: İkinci resmin byte verisi
+        :return: Double exposure efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data1) as img1, WandImage(blob=image_data2) as img2:
+            # İkinci resmi birinci resmin boyutuna getir
+            img2.resize(img1.width, img1.height)
+            
+            # İkinci resmi siyah-beyaz yap ve kontrastı artır
+            img2.modulate(brightness=150, saturation=0)
+            
+            # Resimleri birleştir
+            img1.composite(img2, operator='screen')
+            
+            # Kontrast ve parlaklık ayarla
+            img1.modulate(brightness=110, saturation=120)
+            
+            return BytesIO(img1.make_blob('png'))
+
+    def apply_duotone(self, image_data, color1='blue', color2='pink'):
+        """
+        Resme duotone efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param color1: Birinci renk
+        :param color2: İkinci renk
+        :return: Duotone efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Önce siyah-beyaz yap
+            img.modulate(saturation=0)
+            
+            # Renk gradyanı oluştur
+            with WandImage(width=img.width, height=img.height, pseudo=f'gradient:{color1}-{color2}') as gradient:
+                # Gradient ile orijinal resmi birleştir
+                img.composite(gradient, operator='overlay')
+            
+            # Kontrast ayarla
+            img.contrast_stretch(black_point=0.15, white_point=0.95)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_tilt_shift(self, image_data, blur_factor=5):
+        """
+        Minyatür efekti (tilt-shift) uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param blur_factor: Bulanıklık faktörü
+        :return: Tilt-shift efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Kopya oluştur ve bulanıklaştır
+            with img.clone() as blurred:
+                blurred.gaussian_blur(sigma=blur_factor)
+                
+                # Merkez bölge için maske oluştur
+                with WandImage(width=img.width, height=img.height, pseudo='gradient:white-black-white') as mask:
+                    # Maskeli birleştirme
+                    img.composite(blurred, operator='blur', mask=mask)
+            
+            # Renk ve kontrast ayarla
+            img.modulate(brightness=105, saturation=120)
+            img.contrast_stretch(black_point=0.15, white_point=0.95)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_color_splash(self, image_data, color_to_keep='red'):
+        """
+        Seçilen renk dışındaki tüm renkleri siyah-beyaz yapar.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param color_to_keep: Korunacak renk ('red', 'green', 'blue', 'yellow' vb.)
+        :return: Color splash efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Orijinal resmin kopyasını al
+            with img.clone() as color_img:
+                # Ana resmi siyah-beyaz yap
+                img.modulate(saturation=0)
+                
+                # Renk aralığını belirle
+                if color_to_keep == 'red':
+                    color_img.color_threshold(low='rgb(100,0,0)', high='rgb(255,80,80)')
+                elif color_to_keep == 'blue':
+                    color_img.color_threshold(low='rgb(0,0,100)', high='rgb(80,80,255)')
+                elif color_to_keep == 'green':
+                    color_img.color_threshold(low='rgb(0,100,0)', high='rgb(80,255,80)')
+                elif color_to_keep == 'yellow':
+                    color_img.color_threshold(low='rgb(100,100,0)', high='rgb(255,255,80)')
+                
+                # Resimleri birleştir
+                img.composite(color_img, operator='copy_opacity')
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_mirror_effect(self, image_data, direction='horizontal'):
+        """
+        Resme ayna efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param direction: Ayna yönü ('horizontal' veya 'vertical')
+        :return: Ayna efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Resmi ikiye böl
+            if direction == 'horizontal':
+                width = img.width // 2
+                with img[0:width, 0:img.height] as half:
+                    # Sağ yarıyı sol yarının aynası yap
+                    half.flop()
+                    img.composite(half, left=width, top=0)
+            else:  # vertical
+                height = img.height // 2
+                with img[0:img.width, 0:height] as half:
+                    # Alt yarıyı üst yarının aynası yap
+                    half.flip()
+                    img.composite(half, left=0, top=height)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_kaleidoscope(self, image_data, segments=8):
+        """
+        Resme kaleydoskop efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param segments: Bölüm sayısı
+        :return: Kaleydoskop efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Resmi kare yap
+            size = min(img.width, img.height)
+            img.crop(width=size, height=size, gravity='center')
+            
+            # Merkeze göre döndür ve çoğalt
+            angle = 360 / segments
+            original = img.clone()
+            
+            for i in range(1, segments):
+                with original.clone() as segment:
+                    segment.rotate(angle * i)
+                    img.composite(segment, operator='over')
+            
+            # Efekti güçlendir
+            img.modulate(brightness=110, saturation=130)
+            
+            return BytesIO(img.make_blob('png'))
+
+    def apply_wave_distortion(self, image_data, amplitude=5, wavelength=10):
+        """
+        Resme dalga distorsiyonu efekti uygular.
+        
+        :param image_data: Yüklenen resmin byte verisi
+        :param amplitude: Dalga yüksekliği
+        :param wavelength: Dalga uzunluğu
+        :return: Dalga efekti uygulanmış resmin byte verisi
+        """
+        with WandImage(blob=image_data) as img:
+            # Dalga efekti uygula
+            img.wave(amplitude=amplitude, wavelength=wavelength)
+            
+            # Kenarları düzelt
+            img.trim()
             
             return BytesIO(img.make_blob('png'))
