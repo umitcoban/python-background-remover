@@ -47,7 +47,7 @@ python-dateutil==2.9.0.post0
 python-multipart==0.0.20
 referencing==0.36.2
 rembg==2.0.62
-requests==2.32.3
+requests==2.32.4
 rpds-py==0.22.3
 scikit-image==0.25.1
 scipy==1.15.1
