@@ -59,7 +59,7 @@ sympy==1.13.3
 tifffile==2025.1.10
 tqdm==4.67.1
 typing_extensions==4.12.2
-urllib3==2.3.0
+urllib3==2.5.0
 uvicorn==0.34.0
 validators==0.34.0
 scikit-image==0.25.1
